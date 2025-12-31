@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <title>پنل پیام‌ها</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: Vazirmatn, sans-serif;
+      padding: 40px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    th,
+    td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: right;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    #logoutBtn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-family: Vazirmatn, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #logoutBtn:hover {
+      background: #c62828;
+    }
+
+    .deleteBtn {
+      background: #e53935;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: Vazirmatn, sans-serif;
+    }
+
+    .deleteBtn:hover {
+      background: #c62828;
+    }
+  </style>
+  <script>
+    if (localStorage.getItem("isAdmin") !== "true") {
+      window.location.href = "login.html";
+    }
+  </script>
+</head>
+
+<body>
+  <button id="logoutBtn">خروج</button>
+
+  <h1>پیام‌های دریافتی</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>نام</th>
+        <th>ایمیل</th>
+        <th>پیام</th>
+        <th>تاریخ</th>
+        <th>حذف</th>
+      </tr>
+    </thead>
+    <tbody id="messagesTable">
+      <!-- پیام‌ها اینجا اضافه می‌شوند -->
+    </tbody>
+  </table>
+
+  <script>
+    // بررسی لاگین
+    if (localStorage.getItem("isAdmin") !== "true") {
+      window.location.href = "login.html";
+    }
+
+    // بارگذاری پیام‌ها
+    document.addEventListener("DOMContentLoaded", async () => {
+      const table = document.getElementById("messagesTable");
+
+      try {
+        const res = await fetch("/api/contact");
+        const messages = await res.json();
+        console.log("Fetched messages:", messages); // برای دیباگ
+
+        if (!Array.isArray(messages) || messages.length === 0) {
+          table.innerHTML = "<tr><td colspan='4'>پیامی وجود ندارد</td></tr>";
+          return;
+        }
+
+        messages.forEach(msg => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${msg.fullname}</td>
+            <td>${msg.email}</td>
+            <td>${msg.message}</td>
+            <td>${new Date(msg.created_at).toLocaleString('fa-IR')}</td>
+            <td>
+      <button class="deleteBtn" data-id="${msg.id}">حذف</button>
+    </td>
+          `;
+          table.appendChild(row);
+        });
+
+      } catch (err) {
+        console.error("خطا در بارگذاری پیام‌ها:", err);
+        table.innerHTML = "<tr><td colspan='4'>خطا در بارگذاری پیام‌ها</td></tr>";
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("isAdmin");
+      window.location.href = "login.html";
+    });
+    document.addEventListener("click", async (e) => {
+      if (!e.target.classList.contains("deleteBtn")) return;
+
+      const messageId = e.target.dataset.id;
+      const row = e.target.closest("tr");
+
+      if (!confirm("آیا از حذف این پیام مطمئن هستید؟")) return;
+
+      try {
+        const res = await fetch(`/api/contact/${messageId}`, {
+          method: "DELETE"
+        });
+
+        const data = await res.text();
+        console.log("Delete response:", res.status, data);
+
+        if (!res.ok) {
+          alert("خطا در حذف پیام: " + data);
+          return;
+        }
+
+
+        row.remove(); // حذف ردیف از جدول
+      } catch (err) {
+        console.error(err);
+        alert("خطای ارتباط با سرور");
+      }
+    });
+
+  </script>
+
+</body>
+
+</html>
